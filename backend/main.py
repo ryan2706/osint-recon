@@ -128,7 +128,6 @@ def export_scan_result(scan_id: str):
     headers = {
         'Content-Disposition': f'attachment; filename="scan_results_{scan_data["domain"]}.xlsx"'
     }
-    }
     return StreamingResponse(output, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 # Serve static files (production mode)
