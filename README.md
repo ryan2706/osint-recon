@@ -1,4 +1,4 @@
-# DarkWeb OSINT Recon
+# OSINT Recon
 
 A powerful, Dockerized OSINT reconnaissance web application with a "Black Hat Hacker" aesthetic. This tool aggregates results from popular reconnaissance tools like **Subfinder**, **HTTPX**, and **Nuclei** into a unified, premium dashboard.
 
