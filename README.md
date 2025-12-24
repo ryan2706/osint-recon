@@ -38,7 +38,7 @@ You need to download this project to your computer.
 1.  Open your **Terminal** or **Command Prompt**.
 2.  Run the following command to download the code:
     ```bash
-    git clone https://github.com/yourusername/osint-recon.git
+    git clone https://github.com/ryan2706/osint-recon.git
     ```
 3.  Go into the project folder:
     ```bash
