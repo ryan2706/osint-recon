@@ -1,12 +1,19 @@
-FROM python:3.10-slim-bookworm
+FROM ubuntu:24.04
 
-# Install system dependencies and Go (for ProjectDiscovery tools)
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies, Python, and Go prerequisites
+# We include python3-venv because Ubuntu 24.04 (managed by PEP 668) requires a venv for pip install
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     wget \
     git \
     libpcap-dev \
     curl \
     gnupg \
+    python3 \
+    python3-pip \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Go
@@ -33,6 +40,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
 # Setup Backend
 WORKDIR /app/backend
 COPY backend/requirements.txt .
+
+# Create and use a virtual environment
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ .
 
