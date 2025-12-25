@@ -32,6 +32,7 @@ jobs:
           args: '--skip-dirs /app/nuclei-templates'
 
 
+
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
