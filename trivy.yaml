@@ -1,3 +1,7 @@
 scan:
   skip-dirs:
     - /app/nuclei-templates
+  ignored-packages:
+    - linux-libc-dev
+    - linux-headers-amd64
+    - linux-image-amd64

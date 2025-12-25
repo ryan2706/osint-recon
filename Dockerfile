@@ -1,7 +1,7 @@
 FROM python:3.10-slim-bookworm
 
 # Install system dependencies and Go (for ProjectDiscovery tools)
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     wget \
     git \
     libpcap-dev \
