@@ -32,6 +32,9 @@ RUN go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
 # Clone Nuclei Templates to a fixed location
 RUN git clone https://github.com/projectdiscovery/nuclei-templates.git /app/nuclei-templates
 
+# Clean up Go module cache and build artifacts to remove test keys (fix false positives)
+RUN rm -rf /go/pkg /go/src /root/.cache
+
 
 # Install Node.js (for Frontend Build)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
