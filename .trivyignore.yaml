@@ -1,3 +1,0 @@
-- id: gcp-service-account
-  paths:
-    - "/app/nuclei-templates/http/global-matchers/secrets-patterns-rules.yaml"
