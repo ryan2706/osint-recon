@@ -1,4 +1,4 @@
-FROM python:3.10-slim-bullseye
+FROM python:3.10-slim-bookworm
 
 # Install system dependencies and Go (for ProjectDiscovery tools)
 RUN apt-get update && apt-get install -y \
