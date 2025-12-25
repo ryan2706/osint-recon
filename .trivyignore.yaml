@@ -1,0 +1,15 @@
+# Go Standard Library False Positives (Fixed in Go 1.25.5, incorrectly flagged)
+- id: CVE-2025-61729
+  statement: "Fixed in Go 1.25.5. False positive due to scanner DB lag."
+- id: CVE-2025-58183
+  statement: "Fixed in Go 1.25.2. False positive."
+- id: CVE-2025-47907
+  statement: "Fixed in Go 1.24.6. False positive."
+
+# Ubuntu 24.04 Unpatched / Vendor Deferred Issues
+- id: CVE-2016-2781
+  statement: "Vulnerable in coreutils (Ubuntu 24.04). Old issue, often disputed/won't fix."
+- id: CVE-2025-9086
+  statement: "Vulnerable in curl (Ubuntu 24.04). No fix available."
+- id: CVE-2024-52005
+  statement: "Vulnerable in git (Ubuntu 24.04). Fix deferred by vendor."
