@@ -6,4 +6,17 @@ scan:
     - linux-libc-dev
     - linux-headers-amd64
     - linux-image-amd64
+    - linux-headers-generic
+    - linux-image-generic
+    - linux-tools-common
+    - linux-tools-generic
+    - linux-modules-generic
+    - linux-modules-extra-generic
+    - linux-virtual
+    - linux-base
+    - linux-firmware
+    - linux-cloud-tools-common
+    - linux-cloud-tools-generic
+    - linux-cloud-tools-virtual
+    - linux-tools-virtual
   ignorefile: .trivyignore.yaml
