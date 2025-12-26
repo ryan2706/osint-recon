@@ -178,8 +178,44 @@ class Scanner:
                         continue
             
             logger.info(f"Nuclei stderr output (info/warning): {process.stderr}")
-            logger.info(f"Nuclei found {len(results)} issues")
-            return results
+            logger.info(f"Nuclei raw findings: {len(results)}")
+
+            # Aggregate results
+            aggregated_results = {}
+            for item in results:
+                # Create a unique key based on template_id and where it matched
+                # We use the template_id and matched_at as the primary key
+                # Some templates might match same URL multiple times with different matchers
+                template_id = item.get("template_id", "")
+                matched_at = item.get("matched_at", "")
+                
+                key = f"{template_id}|{matched_at}"
+
+                if key not in aggregated_results:
+                    # Initialize with the first occurrence
+                    aggregated_results[key] = item.copy()
+                    aggregated_results[key]["matchers"] = []
+                    aggregated_results[key]["extracted_results_list"] = []
+
+                # Merge matcher_name
+                matcher = item.get("matcher_name")
+                if matcher and matcher not in aggregated_results[key]["matchers"]:
+                    aggregated_results[key]["matchers"].append(matcher)
+
+                # Merge extracted_results
+                extracted = item.get("extracted_results")
+                if extracted:
+                    if isinstance(extracted, list):
+                        for ex in extracted:
+                            if ex not in aggregated_results[key]["extracted_results_list"]:
+                                aggregated_results[key]["extracted_results_list"].append(ex)
+                    else:
+                        if extracted not in aggregated_results[key]["extracted_results_list"]:
+                             aggregated_results[key]["extracted_results_list"].append(extracted)
+
+            final_results = list(aggregated_results.values())
+            logger.info(f"Nuclei aggregated findings: {len(final_results)}")
+            return final_results
         except Exception as e:
             logger.exception(f"Exception while running Nuclei: {e}")
             return []

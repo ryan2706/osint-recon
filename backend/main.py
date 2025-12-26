@@ -95,7 +95,8 @@ def export_scan_result(scan_id: str):
         raise HTTPException(status_code=404, detail="Scan not found")
     
     scan_data = SCAN_RESULTS[scan_id]
-    if scan_data["status"] != "completed" or not scan_data["data"]:
+    scan_data = SCAN_RESULTS[scan_id]
+    if scan_data["status"] not in ["discovery_completed", "scan_completed"] or not scan_data["data"]:
          raise HTTPException(status_code=400, detail="Scan not completed yet")
     
     data = scan_data["data"]
