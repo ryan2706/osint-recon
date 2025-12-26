@@ -137,20 +137,31 @@ class Scanner:
             cmd = [
                 self.nuclei_path,
                 *template_args,
+                "-severity", "info,low,medium,high,critical",
                 "-rl", "50",
                 "-j",
                 "-silent",
                 "-nc"
             ]
+
+            # Log the full command for debugging
+            logger.info(f"Executing Nuclei command: {' '.join(cmd)}")
             
             process = subprocess.run(
                 cmd,
                 input=input_str,
                 capture_output=True,
-                text=True,
-                check=True
+                text=True
             )
             
+            if process.returncode != 0:
+                logger.error(f"Nuclei process failed with return code {process.returncode}")
+                logger.error(f"Stderr: {process.stderr}")
+                logger.error(f"Stdout: {process.stdout}")
+                # We don't raise immediately to allow returning partial results if any, 
+                # but with check=False (implied by removing check=True above) we handle it here.
+                return []
+
             results = []
             for line in process.stdout.strip().split('\n'):
                 if line:
@@ -166,32 +177,33 @@ class Scanner:
                         logger.warning(f"Failed to decode Nuclei JSON line: {line[:100]}... Error: {e}")
                         continue
             
+            logger.info(f"Nuclei stderr output (info/warning): {process.stderr}")
             logger.info(f"Nuclei found {len(results)} issues")
             return results
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Nuclei failed. Stderr: {e.stderr}")
-            logger.error(f"Nuclei failed. Stdout: {e.stdout}")
+        except Exception as e:
+            logger.exception(f"Exception while running Nuclei: {e}")
             return []
 
-    def scan_domain(self, domain: str) -> Dict[str, Any]:
+    def run_discovery(self, domain: str) -> Dict[str, Any]:
         """
-        Runs the full scan chain: Subfinder -> HTTPX -> Nuclei
+        Runs the discovery chain: Subfinder -> HTTPX
         """
         # 1. Subfinder
         subdomains = self.run_subfinder(domain)
         
         # 2. HTTPX
         live_hosts_data = self.run_httpx(subdomains)
-        # Extract URLs for nuclei
-        live_urls = [h.get('url') for h in live_hosts_data if h.get('url')]
-        logger.info(f"Targets for Nuclei: {live_urls}")
-        
-        # 3. Nuclei
-        vulnerabilities = self.run_nuclei(live_urls)
         
         return {
             "domain": domain,
             "subdomains": subdomains,
-            "live_hosts": live_hosts_data,
-            "vulnerabilities": vulnerabilities
+            "live_hosts": live_hosts_data
         }
+
+    def run_nuclei_scan(self, targets: List[str]) -> List[Dict[str, Any]]:
+        """
+        Runs Nuclei on specific targets
+        """
+        logger.info(f"Targets for Nuclei: {targets}")
+        vulnerabilities = self.run_nuclei(targets)
+        return vulnerabilities

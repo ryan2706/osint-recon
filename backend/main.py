@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import uuid
 import os
 import io
@@ -24,30 +24,64 @@ app.add_middleware(
 # In production, use a database (Redis/Postgres)
 SCAN_RESULTS: Dict[str, Dict[str, Any]] = {}
 
-class ScanRequest(BaseModel):
+class DiscoveryRequest(BaseModel):
     domain: str
 
-def run_scan_task(scan_id: str, domain: str):
+class NucleiScanRequest(BaseModel):
+    scan_id: str
+    targets: List[str]
+
+def run_discovery_task(scan_id: str, domain: str):
     scanner = Scanner()
-    SCAN_RESULTS[scan_id]["status"] = "running"
+    SCAN_RESULTS[scan_id]["status"] = "running_discovery"
     try:
-        results = scanner.scan_domain(domain)
-        SCAN_RESULTS[scan_id]["status"] = "completed"
+        results = scanner.run_discovery(domain)
         SCAN_RESULTS[scan_id]["data"] = results
+        SCAN_RESULTS[scan_id]["status"] = "discovery_completed"
     except Exception as e:
         SCAN_RESULTS[scan_id]["status"] = "failed"
         SCAN_RESULTS[scan_id]["error"] = str(e)
 
-@app.post("/scan")
-def start_scan(request: ScanRequest, background_tasks: BackgroundTasks):
+def run_nuclei_task(scan_id: str, targets: List[str]):
+    scanner = Scanner()
+    SCAN_RESULTS[scan_id]["status"] = "running_nuclei"
+    try:
+        results = scanner.run_nuclei_scan(targets)
+        # Merge nuclei results into existing data
+        if SCAN_RESULTS[scan_id]["data"] is None:
+             SCAN_RESULTS[scan_id]["data"] = {}
+        
+        SCAN_RESULTS[scan_id]["data"]["vulnerabilities"] = results
+        SCAN_RESULTS[scan_id]["status"] = "scan_completed"
+    except Exception as e:
+        SCAN_RESULTS[scan_id]["status"] = "failed"
+        SCAN_RESULTS[scan_id]["error"] = str(e)
+
+@app.post("/scan/discovery")
+def start_discovery(request: DiscoveryRequest, background_tasks: BackgroundTasks):
     scan_id = str(uuid.uuid4())
     SCAN_RESULTS[scan_id] = {
         "status": "pending",
         "domain": request.domain,
-        "data": None
+        "data": None,
+        "type": "discovery" # Track scan type
     }
-    background_tasks.add_task(run_scan_task, scan_id, request.domain)
+    background_tasks.add_task(run_discovery_task, scan_id, request.domain)
     return {"scan_id": scan_id}
+
+@app.post("/scan/nuclei")
+def start_nuclei_scan(request: NucleiScanRequest, background_tasks: BackgroundTasks):
+    scan_id = request.scan_id
+    if scan_id not in SCAN_RESULTS:
+        raise HTTPException(status_code=404, detail="Scan ID not found")
+    
+    # Verify discovery is done
+    if SCAN_RESULTS[scan_id]["status"] != "discovery_completed":
+         raise HTTPException(status_code=400, detail="Discovery must be completed before running Nuclei")
+
+    SCAN_RESULTS[scan_id]["status"] = "pending_nuclei"
+    background_tasks.add_task(run_nuclei_task, scan_id, request.targets)
+    return {"message": "Nuclei scan started", "scan_id": scan_id}
 
 @app.get("/scan/{scan_id}")
 def get_scan_result(scan_id: str):
