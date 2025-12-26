@@ -23,44 +23,8 @@ const ResultsDashboard = ({ results, scanId }) => {
         return (severityOrder[sevB] || 0) - (severityOrder[sevA] || 0);
     });
 
-    // Aggregate similar vulnerabilities (same template_id and matched_at)
-    const aggregatedVulnerabilities = sortedVulnerabilities.reduce((acc, vuln) => {
-        // Use a more relaxed key: template_id + host (ignoring small variations in matched_at if necessary, but visually they look same)
-        // Or better, use template_id + matched_at. If they are identical, they condense.
-        const key = `${vuln.template_id}|${vuln.matched_at}`;
-
-        if (!acc[key]) {
-            acc[key] = {
-                ...vuln,
-                matchers: [],
-                extracted_results_list: []
-            };
-        }
-
-        // Aggregate matcher names
-        if (vuln.matcher_name && !acc[key].matchers.includes(vuln.matcher_name)) {
-            acc[key].matchers.push(vuln.matcher_name);
-        }
-
-        // Aggregate extracted results
-        if (vuln.extracted_results) {
-            const extracted = Array.isArray(vuln.extracted_results)
-                ? vuln.extracted_results
-                : [vuln.extracted_results];
-            extracted.forEach(ex => {
-                if (!acc[key].extracted_results_list.includes(ex)) {
-                    acc[key].extracted_results_list.push(ex);
-                }
-            });
-        }
-
-        return acc;
-    }, {});
-
-    const aggregatedList = Object.values(aggregatedVulnerabilities);
-
     // Group by host
-    const groupedVulnerabilities = aggregatedList.reduce((acc, vuln) => {
+    const groupedVulnerabilities = sortedVulnerabilities.reduce((acc, vuln) => {
         const host = vuln.host || 'Unknown Host';
         if (!acc[host]) acc[host] = [];
         acc[host].push(vuln);
