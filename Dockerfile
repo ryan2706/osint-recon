@@ -15,6 +15,9 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     python3-pip \
     python3-venv \
     binutils \
+    libpam-modules \
+    libpam0g \
+    libpam-runtime \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Go
