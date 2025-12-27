@@ -19,3 +19,9 @@
   statement: "Vulnerable in expat (Ubuntu 24.04). Fix deferred by upstream."
 - id: CVE-2024-2236
   statement: "Vulnerable in libgcrypt (Ubuntu 24.04). Fix deferred by upstream."
+- id: CVE-2025-1180
+  statement: "Vulnerable in binutils (Ubuntu 24.04). Status: Needs Evaluation / Low risk."
+- id: CVE-2025-1149
+  statement: "Memory leak in binutils (Ubuntu 24.04). Low severity/deferred."
+- id: CVE-2025-1152
+  statement: "Memory leak in binutils (Ubuntu 24.04). Low severity/deferred."
