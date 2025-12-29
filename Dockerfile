@@ -54,7 +54,8 @@ COPY backend/requirements.txt .
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade "setuptools>=78.1.1" && \
+    pip install --no-cache-dir -r requirements.txt
 COPY backend/ .
 
 # Setup Frontend and Build

@@ -142,8 +142,8 @@ def export_scan_result(scan_id: str):
             "Matched At": vuln.get("matched_at"),
             "Host": vuln.get("host"),
             "Type": vuln.get("type"),
-            "Matcher Name": vuln.get("matcher_name"),
-            "Extracted Results": ", ".join(vuln.get("extracted_results", [])) if isinstance(vuln.get("extracted_results"), list) else vuln.get("extracted_results"),
+            "Matcher Name": ", ".join(vuln.get("matchers", [])) if vuln.get("matchers") else vuln.get("matcher_name"),
+            "Extracted Results": ", ".join(vuln.get("extracted_results_list", [])) if vuln.get("extracted_results_list") else (", ".join(vuln.get("extracted_results", [])) if isinstance(vuln.get("extracted_results"), list) else vuln.get("extracted_results")),
             "CVE ID": classification.get("cve_id"),
             "CVSS Score": classification.get("cvss_score"),
             "Description": info.get("description")
