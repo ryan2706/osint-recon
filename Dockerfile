@@ -18,6 +18,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     libpam-modules \
     libpam0g \
     libpam-runtime \
+    curl \
+    libcurl4 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Go

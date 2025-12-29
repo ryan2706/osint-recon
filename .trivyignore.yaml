@@ -25,3 +25,5 @@
   statement: "Memory leak in binutils (Ubuntu 24.04). Low severity/deferred."
 - id: CVE-2025-1152
   statement: "Memory leak in binutils (Ubuntu 24.04). Low severity/deferred."
+- id: CVE-2025-0167
+  statement: "Low severity leakage in libcurl (rare .netrc usage). Suppress if unpatched."
