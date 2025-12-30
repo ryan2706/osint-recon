@@ -21,7 +21,6 @@ app.add_middleware(
 )
 
 # In-memory storage for scan results
-# In production, use a database (Redis/Postgres)
 SCAN_RESULTS: Dict[str, Dict[str, Any]] = {}
 
 class DiscoveryRequest(BaseModel):
@@ -46,7 +45,8 @@ def run_nuclei_task(scan_id: str, targets: List[str]):
     scanner = Scanner()
     SCAN_RESULTS[scan_id]["status"] = "running_nuclei"
     try:
-        results = scanner.run_nuclei_scan(targets)
+        # Call internal run_nuclei directly
+        results = scanner.run_nuclei(targets)
         # Merge nuclei results into existing data
         if SCAN_RESULTS[scan_id]["data"] is None:
              SCAN_RESULTS[scan_id]["data"] = {}
@@ -94,7 +94,6 @@ def export_scan_result(scan_id: str):
     if scan_id not in SCAN_RESULTS:
         raise HTTPException(status_code=404, detail="Scan not found")
     
-    scan_data = SCAN_RESULTS[scan_id]
     scan_data = SCAN_RESULTS[scan_id]
     if scan_data["status"] not in ["discovery_completed", "scan_completed"] or not scan_data["data"]:
          raise HTTPException(status_code=400, detail="Scan not completed yet")

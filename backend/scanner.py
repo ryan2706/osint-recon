@@ -38,7 +38,6 @@ class Scanner:
     def run_subfinder(self, domain: str) -> List[str]:
         logger.info(f"Running Subfinder on {domain}")
         try:
-            # -d domain -all -recursive -silent (more comprehensive)
             process = subprocess.run(
                 [self.subfinder_path, "-d", domain, "-all", "-recursive", "-silent"],
                 capture_output=True,
@@ -104,40 +103,29 @@ class Scanner:
             input_str = "\n".join(targets)
             
             # Construct template paths dynamically
+            # To ensure no findings are missed, we should scan the entire 'http' directory if it exists,
+            # rather than cherry-picking subfolders like cves/ or misconfiguration/.
             template_args = []
             if self.templates_dir:
-                 # Check if specific folders exist
-                 cves_path = os.path.join(self.templates_dir, "http", "cves")
-                 if not os.path.exists(cves_path):
-                     cves_path = os.path.join(self.templates_dir, "cves")
-
-                 vuln_path = os.path.join(self.templates_dir, "http", "vulnerabilities")
-                 if not os.path.exists(vuln_path):
-                     vuln_path = os.path.join(self.templates_dir, "vulnerabilities")
+                 http_path = os.path.join(self.templates_dir, "http")
                  
-                 misc_path = os.path.join(self.templates_dir, "http", "misconfiguration")
-                 if not os.path.exists(misc_path):
-                     misc_path = os.path.join(self.templates_dir, "misconfiguration")
-
-                 # If we found specific folders, use them. Otherwise just use the root.
-                 if os.path.exists(cves_path):
-                     template_args.extend(["-t", cves_path])
-                 if os.path.exists(vuln_path):
-                     template_args.extend(["-t", vuln_path])
-                 if os.path.exists(misc_path):
-                     template_args.extend(["-t", misc_path])
-                 
-                 # If no specific args added (structure changed?), fallback to root
-                 if not template_args:
+                 if os.path.exists(http_path):
+                     # Best case: Scan all HTTP templates
+                     logger.info(f"Using full HTTP template collection at: {http_path}")
+                     template_args.extend(["-t", http_path])
+                 else:
+                     # Fallback: Just use the root templates dir and let Nuclei decide
+                     # output might include dns/ssl/file/etc but ensures we don't miss anything.
+                     logger.info(f"HTTP folder not found. Using root templates dir: {self.templates_dir}")
                      template_args.extend(["-t", self.templates_dir])
             else:
                 # Fallback to defaults or relative if not found
-                template_args.extend(["-t", "cves/", "-t", "vulnerabilities/", "-t", "misconfiguration/"])
+                template_args.extend(["-t", "cves/", "-t", "vulnerabilities/", "-t", "misconfiguration/", "-t", "exposures/", "-t", "miscellaneous/"])
 
             cmd = [
                 self.nuclei_path,
                 *template_args,
-                "-severity", "info,low,medium,high,critical",
+                "-severity", "unknown,info,low,medium,high,critical",
                 "-rl", "50",
                 "-j",
                 "-silent",
@@ -156,11 +144,10 @@ class Scanner:
             
             if process.returncode != 0:
                 logger.error(f"Nuclei process failed with return code {process.returncode}")
+                # Log stderr but continue to parse stdout for partial results
                 logger.error(f"Stderr: {process.stderr}")
-                logger.error(f"Stdout: {process.stdout}")
-                # We don't raise immediately to allow returning partial results if any, 
-                # but with check=False (implied by removing check=True above) we handle it here.
-                return []
+                logger.debug(f"Stdout (partial potentially): {process.stdout}")
+                # Do NOT return [] here. We want to capture any partial findings.
 
             results = []
             for line in process.stdout.strip().split('\n'):
@@ -235,11 +222,3 @@ class Scanner:
             "subdomains": subdomains,
             "live_hosts": live_hosts_data
         }
-
-    def run_nuclei_scan(self, targets: List[str]) -> List[Dict[str, Any]]:
-        """
-        Runs Nuclei on specific targets
-        """
-        logger.info(f"Targets for Nuclei: {targets}")
-        vulnerabilities = self.run_nuclei(targets)
-        return vulnerabilities
