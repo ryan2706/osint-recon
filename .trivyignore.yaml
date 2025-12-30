@@ -31,3 +31,7 @@
   statement: "Predictable WebSocket mask in curl (Ubuntu 24.04). No fix available. Low severity."
 - id: CVE-2024-56433
   statement: "Shadow-utils subordinate ID config (Ubuntu 24.04). Unpatched/Low severity."
+- id: CVE-2024-38950
+  statement: "Libde265 Heap Buffer Overflow. Low impact media codec, not used in recon. Deferred in Ubuntu."
+- id: CVE-2024-38949
+  statement: "Libde265 Heap Buffer Overflow. Low impact media codec, not used in recon. Deferred in Ubuntu."
