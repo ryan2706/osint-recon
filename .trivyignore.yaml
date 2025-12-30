@@ -35,3 +35,31 @@
   statement: "Libde265 Heap Buffer Overflow. Low impact media codec, not used in recon. Deferred in Ubuntu."
 - id: CVE-2024-38949
   statement: "Libde265 Heap Buffer Overflow. Low impact media codec, not used in recon. Deferred in Ubuntu."
+- id: CVE-2025-45582
+  statement: "Tar path traversal. Unpatched in Ubuntu 24.04. Low severity in this context."
+- id: CVE-2021-31879
+  statement: "Wget auth header leak. Unpatched in Ubuntu 24.04."
+- id: CVE-2024-41996
+  statement: "OpenSSL DoS. Vulnerable in Ubuntu 24.04. Low severity (DoS only)."
+- id: CVE-2015-2150
+  statement: "Xen XSA-120. Hypervisor vulnerability. False positive for container."
+- id: CVE-2021-45261
+  statement: "Patch invalid pointer. Low severity/Unpatched in Ubuntu 24.04."
+- id: CVE-2022-25836
+  statement: "linux-libc-dev false positive (Host Kernel). Ignored package."
+- id: CVE-2023-33053
+  statement: "linux-libc-dev false positive (Host Kernel). Ignored package."
+- id: CVE-2019-20426
+  statement: "linux-libc-dev false positive (Host Kernel). Ignored package."
+- id: CVE-2017-13165
+  statement: "linux-libc-dev false positive (Host Kernel). Ignored package."
+- id: CVE-2017-0537
+  statement: "linux-libc-dev false positive (Host Kernel). Ignored package."
+- id: CVE-2019-14899
+  statement: "Host Kernel Vulnerability (VPN). False positive for container."
+- id: CVE-2021-26934
+  statement: "Host Kernel Vulnerability (Xen). False positive for container."
+- id: CVE-2024-36331
+  statement: "Host Kernel Vulnerability (CPU Cache). False positive for container."
+- id: CVE-2021-33098
+  statement: "Host Driver Vulnerability (FPGA). False positive for container."
