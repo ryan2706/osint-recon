@@ -5,11 +5,18 @@ A powerful, Dockerized OSINT reconnaissance web application with a "Black Hat Ha
 
 ## Features
 
--   **Subdomain Enumeration**: Uses `subfinder` to discover valid subdomains.
+-   **Subdomain Enumeration**: Uses `subfinder` (passive) and `amass` (active brute-force) to discover subdomains.
+-   **MX Record Parsing**: Automatically extracts and condenses MX records.
+-   **Live Host Discovery**: Uses `httpx` to probe for live HTTP/HTTPS services.
+-   **Vulnerability Scanning**: Uses `nuclei` to scan for common vulnerabilities.
+-   **Aggregated Results**: Automatically condenses similar vulnerabilities.
+-   **Excel Export**: Export full scan results to a multi-tabbed Excel spreadsheet (including separate MX Records).
+-   **Subdomain Enumeration**: Uses `subfinder` (passive) and `amass` (active brute-force) to discover subdomains.
 -   **Live Host Discovery**: Uses `httpx` to probe for live HTTP/HTTPS services.
 -   **Vulnerability Scanning**: Uses `nuclei` with comprehensive template sets (CVEs, vulnerabilities, misconfigurations) to identify security flaws.
 -   **Aggregated Results**: Automatically condenses similar vulnerabilities and groups them by host.
--   **Excel Export**: Export full scan results to a multi-tabbed Excel spreadsheet.
+-   **MX Record Parsing**: Automatically extracts and condenses MX records from Amass output.
+-   **Excel Export**: Export full scan results to a multi-tabbed Excel spreadsheet (Summary, Subdomains, MX Records, Live Hosts, Vulnerabilities).
 -   **Hacker Theme**: A high-contrast, terminal-inspired UI for that authentic cyber-security feel.
 
 ## Tech Stack
