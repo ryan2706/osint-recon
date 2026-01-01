@@ -9,6 +9,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [status, setStatus] = useState('idle');
+  const [statusMessage, setStatusMessage] = useState('');
 
   const [selectedTargets, setSelectedTargets] = useState([]);
 
@@ -16,7 +17,9 @@ function App() {
     setLoading(true);
     setError(null);
     setResults(null);
+    setResults(null);
     setStatus('starting_discovery');
+    setStatusMessage('Initializing Discovery...');
 
     try {
       const response = await fetch('/scan/discovery', {
@@ -42,6 +45,7 @@ function App() {
 
     setLoading(true);
     setStatus('starting_nuclei');
+    setStatusMessage('Starting Nuclei Scan...');
 
     try {
       const response = await fetch('/scan/nuclei', {
@@ -68,6 +72,11 @@ function App() {
           const response = await fetch(`/scan/${scanId}`);
           if (response.ok) {
             const data = await response.json();
+
+            // Update detailed status message if available
+            if (data.status_message) {
+              setStatusMessage(data.status_message);
+            }
 
             if (data.status === 'discovery_completed') {
               setResults(data.data);
@@ -110,9 +119,9 @@ function App() {
           <div className="loading-status">
             <div className="spinner"></div>
             <p>
-              {status === 'running_discovery'
+              {statusMessage || (status === 'running_discovery'
                 ? 'Running Discovery (Subfinder & HTTPX)...'
-                : 'Running Nuclei Scan on selected targets...'}
+                : 'Running Nuclei Scan on selected targets...')}
             </p>
           </div>
         )}

@@ -35,6 +35,7 @@ ENV PATH="${GOPATH}/bin:${PATH}"
 RUN go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
 RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
 RUN go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+RUN go install -v github.com/owasp-amass/amass/v4/cmd/amass@latest
 # Clone Nuclei Templates to a fixed location
 RUN git clone https://github.com/projectdiscovery/nuclei-templates.git /app/nuclei-templates
 

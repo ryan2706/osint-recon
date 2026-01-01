@@ -18,6 +18,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space-action@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
       - name: Build an image from Dockerfile
         run: |
           docker build -t my-app:${{ github.sha }} .

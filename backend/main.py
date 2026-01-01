@@ -33,8 +33,12 @@ class NucleiScanRequest(BaseModel):
 def run_discovery_task(scan_id: str, domain: str):
     scanner = Scanner()
     SCAN_RESULTS[scan_id]["status"] = "running_discovery"
+    
+    def update_status(message: str):
+        SCAN_RESULTS[scan_id]["status_message"] = message
+
     try:
-        results = scanner.run_discovery(domain)
+        results = scanner.run_discovery(domain, status_callback=update_status)
         SCAN_RESULTS[scan_id]["data"] = results
         SCAN_RESULTS[scan_id]["status"] = "discovery_completed"
     except Exception as e:
@@ -44,9 +48,12 @@ def run_discovery_task(scan_id: str, domain: str):
 def run_nuclei_task(scan_id: str, targets: List[str]):
     scanner = Scanner()
     SCAN_RESULTS[scan_id]["status"] = "running_nuclei"
+    def update_status(message: str):
+        SCAN_RESULTS[scan_id]["status_message"] = message
+
     try:
         # Call internal run_nuclei directly
-        results = scanner.run_nuclei(targets)
+        results = scanner.run_nuclei(targets, status_callback=update_status)
         # Merge nuclei results into existing data
         if SCAN_RESULTS[scan_id]["data"] is None:
              SCAN_RESULTS[scan_id]["data"] = {}
@@ -64,7 +71,11 @@ def start_discovery(request: DiscoveryRequest, background_tasks: BackgroundTasks
         "status": "pending",
         "domain": request.domain,
         "data": None,
-        "type": "discovery" # Track scan type
+        "status": "pending",
+        "domain": request.domain,
+        "data": None,
+        "type": "discovery", # Track scan type
+        "status_message": "Initializing..."
     }
     background_tasks.add_task(run_discovery_task, scan_id, request.domain)
     return {"scan_id": scan_id}
@@ -115,6 +126,12 @@ def export_scan_result(scan_id: str):
     # 2. Subdomains Data
     df_subdomains = pd.DataFrame(data.get("subdomains", []), columns=["Subdomain"])
     
+    # 2.5 MX Records
+    mx_data = data.get("mx_records", [])
+    df_mx = pd.DataFrame(mx_data)
+    if not df_mx.empty:
+        df_mx.columns = ["Domain", "MX Server"]
+    
     # 3. HTTPX Data
     # Flatten the dict structure for DataFrame
     httpx_rows = []
@@ -153,7 +170,9 @@ def export_scan_result(scan_id: str):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df_summary.to_excel(writer, sheet_name='Summary', index=False)
-        df_subdomains.to_excel(writer, sheet_name='Subfinder', index=False)
+        df_subdomains.to_excel(writer, sheet_name='subfinder + amass', index=False)
+        if not df_mx.empty:
+             df_mx.to_excel(writer, sheet_name='MX Records', index=False)
         df_httpx.to_excel(writer, sheet_name='HTTPX', index=False)
         df_nuclei.to_excel(writer, sheet_name='Nuclei', index=False)
     

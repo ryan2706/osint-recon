@@ -3,8 +3,10 @@ import shutil
 import json
 import logging
 import os
+import re
+import uuid
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple, Callable
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -13,6 +15,7 @@ logger = logging.getLogger(__name__)
 class Scanner:
     def __init__(self):
         self.subfinder_path = shutil.which("subfinder") or "subfinder"
+        self.amass_path = shutil.which("amass") or "amass"
         self.httpx_path = shutil.which("httpx") or "httpx"
         self.nuclei_path = shutil.which("nuclei") or "nuclei"
         self.templates_dir = self._find_templates_dir()
@@ -53,6 +56,86 @@ class Scanner:
             logger.error(f"Subfinder failed: {e.stderr}")
             return []
 
+    def run_amass(self, domain: str) -> Tuple[List[str], List[Dict[str, str]]]:
+        logger.info(f"Running Amass on {domain}")
+        output_file = f"amass_results_{uuid.uuid4()}.txt"
+        
+        try:
+            # Command: amass enum -active -brute -d target.com -o amass_results.txt
+            cmd = [
+                self.amass_path, "enum", 
+                "-active", 
+                "-brute", 
+                "-d", domain, 
+                "-o", output_file
+            ]
+            
+            logger.info(f"Executing Amass command: {' '.join(cmd)}")
+            
+            process = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True
+            )
+            
+            if process.returncode != 0:
+                logger.error(f"Amass process returned non-zero exit code: {process.returncode}")
+                # Log stderr, though amass often prints to stdout or the log file
+                logger.error(f"Amass stderr: {process.stderr}")
+
+            raw_lines = []
+            if os.path.exists(output_file):
+                with open(output_file, 'r') as f:
+                    raw_lines = [line.strip() for line in f if line.strip()]
+                
+                # Cleanup
+                os.remove(output_file)
+            else:
+                logger.warning("Amass output file was not created.")
+
+            # Parse Results
+            subdomains = []
+            mx_records = []
+            
+            # Regex patterns
+            # Pattern for MX: truelight.org.sg (FQDN) --> mx_record --> alt1.aspmx.l.google.com (FQDN)
+            mx_pattern = re.compile(r'(.+?)\s+\(FQDN\)\s+-->\s+mx_record\s+-->\s+(.+?)\s+\(FQDN\)')
+            # Pattern for simple subdomain (loose check, just exclude arrows)
+            # Lines with arrows are relationships, not direct subdomains list items (unless we parse left side)
+            # Amass output can be mixed. We will assume any line NOT matching the relationship pattern 
+            # AND looking like a domain is a subdomain.
+            # However, in arrow lines, the left side IS a subdomain.
+            
+            for line in raw_lines:
+                # Check MX record
+                mx_match = mx_pattern.match(line)
+                if mx_match:
+                    src_domain = mx_match.group(1).strip()
+                    mx_server = mx_match.group(2).strip()
+                    mx_records.append({"domain": src_domain, "mx_server": mx_server})
+                    
+                    # Also add the source domain to subdomains list if valid
+                    subdomains.append(src_domain)
+                    continue
+                
+                # Skip other relationship lines (e.g. ns_record, ptr_record) to avoid polluting subdomains
+                if " --> " in line:
+                    continue
+
+                # Plain subdomain line
+                subdomains.append(line)
+
+            # Deduplicate locally
+            subdomains = list(set(subdomains))
+            logger.info(f"Amass found {len(subdomains)} subdomains and {len(mx_records)} MX records for {domain}")
+            return subdomains, mx_records
+
+        except Exception as e:
+            logger.exception(f"Amass failed: {e}")
+            if os.path.exists(output_file):
+                os.remove(output_file)
+            return [], []
+
     def run_httpx(self, subdomains: List[str]) -> List[Dict[str, Any]]:
         logger.info(f"Running HTTPX on {len(subdomains)} subdomains")
         if not subdomains:
@@ -60,45 +143,60 @@ class Scanner:
         
         try:
             input_str = "\n".join(subdomains)
+            logger.info(f"HTTPX Input:\n{input_str}")
+            
+            cmd = [
+                self.httpx_path,
+                "-ports", "80,443,8080,8443", 
+                "-tech-detect",
+                "-title",
+                "-status-code",
+                "-follow-redirects",
+                "-json",
+                "-retries", "2",
+                "-timeout", "10"
+            ]
+            logger.info(f"Executing HTTPX command: {' '.join(cmd)}")
+            
             process = subprocess.run(
-                [
-                    self.httpx_path,
-                    "-ports", "80,443,8080,8443", 
-                    "-tech-detect",
-                    "-title",
-                    "-status-code",
-                    "-follow-redirects",
-                    "-json",
-                    "-silent"
-                ],
+                cmd,
                 input=input_str,
                 capture_output=True,
                 text=True,
                 check=True
             )
             
+
+
             results = []
             for line in process.stdout.strip().split('\n'):
                 if line:
                     try:
                         data = json.loads(line)
                         results.append(data)
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"Failed to parse HTTPX line: {line}. Error: {e}")
                         continue
             
             logger.info(f"HTTPX found {len(results)} live hosts")
+            
+
+            
             return results
         except subprocess.CalledProcessError as e:
             logger.error(f"HTTPX failed. Stderr: {e.stderr}")
             logger.error(f"HTTPX failed. Stdout: {e.stdout}")
             return []
 
-    def run_nuclei(self, targets: List[str]) -> List[Dict[str, Any]]:
+    def run_nuclei(self, targets: List[str], status_callback: Callable[[str], None] = None) -> List[Dict[str, Any]]:
         logger.info(f"Running Nuclei on {len(targets)} targets")
         if not targets:
             return []
             
         try:
+            if status_callback:
+                status_callback(f"Running Nuclei (Scanning {len(targets)} targets for vulnerabilities)...")
+
             # echo targets | nuclei -json -silent
             input_str = "\n".join(targets)
             
@@ -207,18 +305,33 @@ class Scanner:
             logger.exception(f"Exception while running Nuclei: {e}")
             return []
 
-    def run_discovery(self, domain: str) -> Dict[str, Any]:
+    def run_discovery(self, domain: str, status_callback: Callable[[str], None] = None) -> Dict[str, Any]:
         """
         Runs the discovery chain: Subfinder -> HTTPX
         """
         # 1. Subfinder
-        subdomains = self.run_subfinder(domain)
+        if status_callback:
+            status_callback("Running Subfinder (Subdomain Enumeration)...")
+        subfinder_results = self.run_subfinder(domain)
         
-        # 2. HTTPX
-        live_hosts_data = self.run_httpx(subdomains)
+        # 2. Amass
+        if status_callback:
+             status_callback("Running Amass (Active Enumeration & Brute Force)...")
+        amass_subdomains, amass_mx_records = self.run_amass(domain)
+
+        # Merge and deduplicate
+        # Convert both lists to a set to remove duplicates, then back to list
+        combined_subdomains = list(set(subfinder_results + amass_subdomains))
+        logger.info(f"Total unique subdomains found: {len(combined_subdomains)}")
+        
+        # 3. HTTPX
+        if status_callback:
+             status_callback(f"Running HTTPX (Probing {len(combined_subdomains)} possible hosts)...")
+        live_hosts_data = self.run_httpx(combined_subdomains)
         
         return {
             "domain": domain,
-            "subdomains": subdomains,
-            "live_hosts": live_hosts_data
+            "subdomains": combined_subdomains,
+            "live_hosts": live_hosts_data,
+            "mx_records": amass_mx_records
         }
