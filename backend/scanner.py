@@ -14,11 +14,29 @@ logger = logging.getLogger(__name__)
 
 class Scanner:
     def __init__(self):
-        self.subfinder_path = shutil.which("subfinder") or "subfinder"
-        self.amass_path = shutil.which("amass") or "amass"
-        self.httpx_path = shutil.which("httpx") or "httpx"
-        self.nuclei_path = shutil.which("nuclei") or "nuclei"
+        self.subfinder_path = self._get_binary_path("subfinder")
+        self.amass_path = self._get_binary_path("amass")
+        self.httpx_path = self._get_binary_path("httpx")
+        self.nuclei_path = self._get_binary_path("nuclei")
+        self.theharvester_path = shutil.which("theHarvester") or "theHarvester"
+        self.metagoofil_path = "/app/metagoofil/metagoofil.py" 
+        self.exiftool_path = shutil.which("exiftool") or "exiftool"
         self.templates_dir = self._find_templates_dir()
+
+
+
+
+
+    def _get_binary_path(self, tool_name: str) -> str:
+        # Prioritize Go bin paths (Docker environment)
+        # Verify both existence and execution permission
+        go_path = f"/go/bin/{tool_name}"
+        if os.path.exists(go_path) and os.access(go_path, os.X_OK):
+            return go_path
+        
+        # Fallback to standard PATH lookup
+        return shutil.which(tool_name) or tool_name
+
 
     def _find_templates_dir(self) -> str:
         # Common default locations for nuclei templates in Docker
@@ -136,35 +154,213 @@ class Scanner:
                 os.remove(output_file)
             return [], []
 
+
+            
+    def run_theharvester(self, domain: str) -> Tuple[List[str], List[str]]:
+        logger.info(f"Running theHarvester on {domain}")
+        output_file = f"theharvester_results_{uuid.uuid4()}" 
+        
+        try:
+            cmd = [self.theharvester_path]
+            # ... (omitting path detection logic for brevity if not changing, but wait, I need to keep it)
+            # Actually, I should just replace the whole method to be clean and safe.
+            
+            # Path Logic: Prefer strict source execution to avoid entrypoint issues
+            # We cloned it to /app/theHarvester
+            source_path = "/app/theHarvester/theHarvester.py"
+            if os.path.exists(source_path):
+                 logger.info(f"Using theHarvester source script: {source_path}")
+                 cmd = ["python3", source_path]
+            elif self.theharvester_path == "theHarvester" and not shutil.which("theHarvester"):
+                 # Fallback if not found and system binary missing
+                 logger.warning("theHarvester source not found. Falling back to module.")
+                 cmd = ["python3", "-m", "theHarvester"]
+
+            # Sources configured for v4.10.0 (removed unsupported ones like threatminer, bing, etc)
+            sources = "baidu,crtsh,duckduckgo,hackertarget,rapiddns,subdomaincenter,subdomainfinderc99,thc,urlscan,yahoo"
+            cmd.extend(["-d", domain, "-b", sources, "-l", "500", "-f", output_file])
+            logger.info(f"Executing theHarvester command: {' '.join(cmd)}")
+            
+            process = subprocess.run(cmd, capture_output=True, text=True)
+            
+            # Application Logic: Parse Results
+            json_output_path = f"{output_file}.json"
+            xml_output_path = f"{output_file}.xml"
+            
+            emails = []
+            hosts = []
+            
+            if os.path.exists(json_output_path):
+                with open(json_output_path, 'r') as f:
+                    try:
+                        data = json.load(f)
+                        emails = data.get("emails", []) or []
+                        hosts = data.get("hosts", []) or []
+                    except json.JSONDecodeError:
+                        logger.error("Failed to parse theHarvester JSON output")
+                os.remove(json_output_path)
+            elif os.path.exists(xml_output_path):
+                os.remove(xml_output_path)
+                logger.warning("theHarvester produced XML. Parsing skipped.")
+            else:
+                 logger.warning("theHarvester output file not found. attempting to parse stdout.")
+                 email_pattern = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}')
+                 raw_emails = email_pattern.findall(process.stdout)
+                 
+                 # Filter out tool noise (author emails, defaults)
+                 excluded_emails = {"cmartorella@edge-security.com"}
+                 emails = [e for e in raw_emails if e.lower() not in excluded_emails and "example.com" not in e]
+
+            emails = list(set(emails))
+            hosts = list(set(hosts))
+            
+            # Debugging: Log warning if no results found
+            if not emails and not hosts:
+                logger.warning("theHarvester found 0 results.")
+            
+            if process.returncode != 0:
+                 if emails or hosts:
+                     logger.info(f"theHarvester exited with code {process.returncode} but found results (likely partial source failure). This is normal.")
+                 else:
+                     logger.warning(f"theHarvester process returned non-zero exit code: {process.returncode}")
+                     if process.stderr:
+                         logger.warning(f"theHarvester Stderr: {process.stderr}")
+
+            logger.info(f"theHarvester found {len(emails)} emails and {len(hosts)} hosts for {domain}")
+            return emails, hosts
+            
+        except Exception as e:
+            logger.exception(f"theHarvester failed: {e}")
+            for ext in ['.json', '.xml']:
+                if os.path.exists(f"{output_file}{ext}"):
+                    os.remove(f"{output_file}{ext}")
+            return [], []
+
+
+
+    def run_metagoofil(self, domain: str) -> List[str]:
+        logger.info(f"Running Metagoofil on {domain}")
+        if not os.path.exists(self.metagoofil_path):
+            logger.warning(f"Metagoofil not found at {self.metagoofil_path}. Skipping.")
+            return []
+            
+        if not shutil.which("exiftool"):
+            logger.warning("Exiftool not found. Skipping Metagoofil processing.")
+            return []
+
+        temp_dir = f"metagoofil_{uuid.uuid4()}"
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        try:
+            # 1. Download files
+            # python3 metagoofil.py -d <domain> -t <types> -n <limit> -o <dir> -w (download)
+            cmd_download = [
+                "python3", self.metagoofil_path,
+                "-d", domain,
+                "-t", "pdf,doc,docx,xls,xlsx",
+                "-n", "20",
+                "-o", temp_dir,
+                "-w"
+            ]
+            logger.info(f"Executing Metagoofil Download: {' '.join(cmd_download)}")
+            
+            subprocess.run(
+                cmd_download,
+                capture_output=True,
+                text=True,
+                check=False # Don't crash if it fails to find files
+            )
+            
+            # Check if any files were downloaded
+            files = os.listdir(temp_dir)
+            if not files:
+                logger.info("Metagoofil found no files to download.")
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                return []
+                
+            logger.info(f"Metagoofil downloaded {len(files)} files. Extracting metadata...")
+
+            # 2. Extract Metadata with Exiftool
+            cmd_exif = [self.exiftool_path, "-r", temp_dir]
+            
+            process = subprocess.run(
+                cmd_exif,
+                capture_output=True,
+                text=True
+            )
+            
+            # 3. Parse Emails from Exiftool output
+            # Use stricter regex as suggested by user to avoid partial matches
+            # Pattern: \b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}\b
+            email_pattern = re.compile(r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}\b')
+            emails = email_pattern.findall(process.stdout)
+            
+            # Filter garbage (common in metadata)
+            cleaned_emails = []
+            for email in emails:
+                if domain in email: # Optional: Strict mode? No, let's keep all valid looking emails
+                    cleaned_emails.append(email)
+                else:
+                    # Still keep it, might be third party provider
+                    cleaned_emails.append(email)
+
+            cleaned_emails = list(set(cleaned_emails))
+            logger.info(f"Metagoofil/Exiftool found {len(cleaned_emails)} emails")
+            
+            return cleaned_emails
+
+        except Exception as e:
+            logger.exception(f"Metagoofil failed: {e}")
+            return []
+        finally:
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir, ignore_errors=True)
+
     def run_httpx(self, subdomains: List[str]) -> List[Dict[str, Any]]:
         logger.info(f"Running HTTPX on {len(subdomains)} subdomains")
         if not subdomains:
             return []
         
         try:
-            input_str = "\n".join(subdomains)
+            # Clean inputs rigorously
+            cleaned_subdomains = [s.strip().lower() for s in subdomains if s.strip()]
+            input_str = "\n".join(cleaned_subdomains)
             logger.info(f"HTTPX Input:\n{input_str}")
             
+            # Optimized Command for Docker Environment
+            # Note: -ip and custom ports (8080/8443) are disabled as they caused network failures in this specific container setup.
             cmd = [
                 self.httpx_path,
-                "-ports", "80,443,8080,8443", 
                 "-tech-detect",
                 "-title",
                 "-status-code",
                 "-follow-redirects",
                 "-json",
                 "-retries", "2",
-                "-timeout", "10"
+                "-timeout", "10",
+                "-random-agent",
             ]
-            logger.info(f"Executing HTTPX command: {' '.join(cmd)}")
+            logger.info(f"Executing HTTPX command (Stable): {' '.join(cmd)}")
+            
+            # Use temporary file for input instead of stdin to avoid potential pipe issues
+            input_file = f"httpx_input_{uuid.uuid4()}.txt"
+            with open(input_file, "w") as f:
+                f.write(input_str)
+            
+            cmd.extend(["-l", input_file])
             
             process = subprocess.run(
                 cmd,
-                input=input_str,
                 capture_output=True,
                 text=True,
-                check=True
+                check=False
             )
+            
+            if os.path.exists(input_file):
+                os.remove(input_file)
+            
+            if process.stderr:
+                 logger.info(f"HTTPX Stderr: {process.stderr}")
             
 
 
@@ -173,6 +369,14 @@ class Scanner:
                 if line:
                     try:
                         data = json.loads(line)
+                        # Normalize IP: httpx might return 'ip' (string) or 'a' (list of IPs)
+                        # If 'ip' is missing but 'a' exists, use the first A record.
+                        if "ip" not in data or not data["ip"]:
+                            if "a" in data and isinstance(data["a"], list) and len(data["a"]) > 0:
+                                data["ip"] = data["a"][0]
+                            else:
+                                data["ip"] = None # Explicitly set to None if missing
+                        
                         results.append(data)
                     except json.JSONDecodeError as e:
                         logger.warning(f"Failed to parse HTTPX line: {line}. Error: {e}")
@@ -309,6 +513,8 @@ class Scanner:
         """
         Runs the discovery chain: Subfinder -> HTTPX
         """
+
+
         # 1. Subfinder
         if status_callback:
             status_callback("Running Subfinder (Subdomain Enumeration)...")
@@ -319,9 +525,22 @@ class Scanner:
              status_callback("Running Amass (Active Enumeration & Brute Force)...")
         amass_subdomains, amass_mx_records = self.run_amass(domain)
 
+        if status_callback:
+            status_callback("Running theHarvester (Email & Subdomain Enumeration)...")
+        emails, th_subdomains = self.run_theharvester(domain)
+
+        # 2.6 Metagoofil (Email Enumeration via Metadata)
+        if status_callback:
+             status_callback("Running Metagoofil (Document Metadata Analysis)...")
+        meta_emails = self.run_metagoofil(domain)
+        
+        # Merge Emails
+        total_emails = list(set(emails + meta_emails))
+        logger.info(f"Total unique emails found: {len(total_emails)}")
+
         # Merge and deduplicate
         # Convert both lists to a set to remove duplicates, then back to list
-        combined_subdomains = list(set(subfinder_results + amass_subdomains))
+        combined_subdomains = list(set(subfinder_results + amass_subdomains + th_subdomains))
         logger.info(f"Total unique subdomains found: {len(combined_subdomains)}")
         
         # 3. HTTPX
@@ -333,5 +552,7 @@ class Scanner:
             "domain": domain,
             "subdomains": combined_subdomains,
             "live_hosts": live_hosts_data,
-            "mx_records": amass_mx_records
+            "mx_records": amass_mx_records,
+            "mx_records": amass_mx_records,
+            "emails": total_emails
         }

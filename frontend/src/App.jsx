@@ -17,7 +17,7 @@ function App() {
     setLoading(true);
     setError(null);
     setResults(null);
-    setResults(null);
+
     setStatus('starting_discovery');
     setStatusMessage('Initializing Discovery...');
 
@@ -139,24 +139,25 @@ function App() {
               </div>
 
               <ul className="target-list">
-                {results.live_hosts.map((host, idx) => (
-                  <li key={idx}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={selectedTargets.includes(host.url)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedTargets(prev => [...prev, host.url]);
-                          } else {
-                            setSelectedTargets(prev => prev.filter(t => t !== host.url));
-                          }
-                        }}
-                      />
-                      {host.url} <span className="status-code">({host.status_code})</span> - {host.title}
-                    </label>
-                  </li>
-                ))}
+                {/* Sort hosts by status code before mapping */
+                  [...results.live_hosts].sort((a, b) => a.status_code - b.status_code).map((host, idx) => (
+                    <li key={idx}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={selectedTargets.includes(host.url)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedTargets(prev => [...prev, host.url]);
+                            } else {
+                              setSelectedTargets(prev => prev.filter(t => t !== host.url));
+                            }
+                          }}
+                        />
+                        {host.url} <span className="status-code">({host.status_code})</span> - {host.title}
+                      </label>
+                    </li>
+                  ))}
               </ul>
 
               <button

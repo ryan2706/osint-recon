@@ -6,7 +6,7 @@ const ResultsDashboard = ({ results, scanId }) => {
 
     if (!results) return null;
 
-    const { subdomains, live_hosts, vulnerabilities } = results;
+    const { subdomains, live_hosts, vulnerabilities, emails } = results;
 
     const severityOrder = {
         'critical': 5,
@@ -35,6 +35,7 @@ const ResultsDashboard = ({ results, scanId }) => {
     const summaryStats = [
         { label: 'Subdomains', value: subdomains.length, color: 'text-blue-400' },
         { label: 'Live Hosts', value: live_hosts.length, color: 'text-green-400' },
+        { label: 'Emails', value: (emails || []).length, color: 'text-yellow-400' },
         { label: 'Vulnerabilities', value: vulnerabilities.length, color: 'text-red-400' },
     ];
 
@@ -85,6 +86,14 @@ const ResultsDashboard = ({ results, scanId }) => {
                             ))}
                             {live_hosts.length > 10 && <li>...and {live_hosts.length - 10} more</li>}
                         </ul>
+                        <h4>Emails Found</h4>
+                        <ul>
+                            {(emails || []).slice(0, 10).map((email, idx) => (
+                                <li key={idx} className="email-item">{email}</li>
+                            ))}
+                            {(emails || []).length === 0 && <li>No emails found.</li>}
+                            {(emails || []).length > 10 && <li>...and {(emails || []).length - 10} more</li>}
+                        </ul>
                         <h4>Vulnerabilities (Top Critical)</h4>
                         <ul>
                             {sortedVulnerabilities.slice(0, 5).map((vuln, idx) => (
@@ -110,6 +119,12 @@ const ResultsDashboard = ({ results, scanId }) => {
                                 onClick={() => setActiveTab('hosts')}
                             >
                                 Live Hosts ({live_hosts.length})
+                            </button>
+                            <button
+                                className={activeTab === 'emails' ? 'active' : ''}
+                                onClick={() => setActiveTab('emails')}
+                            >
+                                Emails ({(emails || []).length})
                             </button>
                             <button
                                 className={activeTab === 'vulns' ? 'active' : ''}
@@ -139,19 +154,28 @@ const ResultsDashboard = ({ results, scanId }) => {
                                                 <a href={host.url} target="_blank" rel="noopener noreferrer" className="host-url">
                                                     {host.url}
                                                 </a>
-                                                <span className={`status-badge status-${host.status_code}`}>
-                                                    {host.status_code}
-                                                </span>
                                             </div>
                                             <div className="host-details">
+                                                <div className="detail-row"><strong>HTTP Status Code:</strong> <span className={`status-text status-${host.status_code}`}>{host.status_code}</span></div>
                                                 {host.title && <div className="detail-row"><strong>Title:</strong> {host.title}</div>}
                                                 {host.webserver && <div className="detail-row"><strong>Server:</strong> {host.webserver}</div>}
                                                 {host.tech && <div className="detail-row"><strong>Tech:</strong> {host.tech.join(', ')}</div>}
-                                                <div className="detail-row"><strong>IP:</strong> {host.host}</div>
+                                                <div className="detail-row"><strong>IP:</strong> {host.ip || <span className="text-gray-500">N/A</span>}</div>
                                             </div>
                                         </div>
                                     ))}
                                     {live_hosts.length === 0 && <p className="empty-state">No live hosts found.</p>}
+                                </div>
+                            )}
+
+                            {activeTab === 'emails' && (
+                                <div className="results-grid">
+                                    {(emails || []).map((email, idx) => (
+                                        <div key={idx} className="result-card simple">
+                                            {email}
+                                        </div>
+                                    ))}
+                                    {(!emails || emails.length === 0) && <p className="empty-state">No emails found.</p>}
                                 </div>
                             )}
 

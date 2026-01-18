@@ -563,3 +563,20 @@ h1 {
   text-transform: uppercase;
   box-shadow: 0 0 10px rgba(255, 0, 51, 0.2);
 }
+
+/* Code Block / Extracted Data */
+.code-block {
+  white-space: pre-wrap;       /* Preservation of whitespace + wrapping */
+  word-wrap: break-word;       /* Legacy support */
+  overflow-wrap: break-word;   /* Standard way to break long words */
+  word-break: break-all;       /* Aggressive break for very long tokens */
+  background: #111;
+  padding: 1rem;
+  border: 1px solid #333;
+  color: var(--term-green);
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  max-width: 100%;
+  border-left: 3px solid var(--term-green-dim);
+}

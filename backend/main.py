@@ -71,9 +71,6 @@ def start_discovery(request: DiscoveryRequest, background_tasks: BackgroundTasks
         "status": "pending",
         "domain": request.domain,
         "data": None,
-        "status": "pending",
-        "domain": request.domain,
-        "data": None,
         "type": "discovery", # Track scan type
         "status_message": "Initializing..."
     }
@@ -113,11 +110,12 @@ def export_scan_result(scan_id: str):
     
     # 1. Summary Data
     summary_data = {
-        "Metric": ["Domain", "Subdomains Found", "Live Hosts", "Vulnerabilities Found"],
+        "Metric": ["Domain", "Subdomains Found", "Live Hosts", "Emails Found", "Vulnerabilities Found"],
         "Value": [
             scan_data["domain"],
             len(data.get("subdomains", [])),
             len(data.get("live_hosts", [])),
+            len(data.get("emails", [])),
             len(data.get("vulnerabilities", []))
         ]
     }
@@ -132,6 +130,9 @@ def export_scan_result(scan_id: str):
     if not df_mx.empty:
         df_mx.columns = ["Domain", "MX Server"]
     
+    # 2.8 Emails Data
+    df_emails = pd.DataFrame(data.get("emails", []), columns=["Email"])
+    
     # 3. HTTPX Data
     # Flatten the dict structure for DataFrame
     httpx_rows = []
@@ -143,6 +144,7 @@ def export_scan_result(scan_id: str):
              "Webserver": host.get("webserver"),
              "Tech": ", ".join(host.get("tech", [])) if host.get("tech") else "",
              "Host": host.get("host"),
+             "IP": host.get("ip"), # Added IP column
              "Port": host.get("port")
          })
     df_httpx = pd.DataFrame(httpx_rows)
@@ -173,6 +175,8 @@ def export_scan_result(scan_id: str):
         df_subdomains.to_excel(writer, sheet_name='subfinder + amass', index=False)
         if not df_mx.empty:
              df_mx.to_excel(writer, sheet_name='MX Records', index=False)
+        if not df_emails.empty:
+             df_emails.to_excel(writer, sheet_name='Emails', index=False)
         df_httpx.to_excel(writer, sheet_name='HTTPX', index=False)
         df_nuclei.to_excel(writer, sheet_name='Nuclei', index=False)
     

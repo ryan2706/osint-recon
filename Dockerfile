@@ -18,8 +18,11 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     libpam-modules \
     libpam0g \
     libpam-runtime \
-    curl \
     libcurl4 \
+    libxml2-dev \
+    libxslt-dev \
+    libffi-dev \
+    libimage-exiftool-perl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Go
@@ -39,6 +42,14 @@ RUN go install -v github.com/owasp-amass/amass/v4/cmd/amass@latest
 # Clone Nuclei Templates to a fixed location
 RUN git clone https://github.com/projectdiscovery/nuclei-templates.git /app/nuclei-templates
 
+# Install theHarvester from source (pip package is often problematic)
+# Install theHarvester from source (pip package is often problematic)
+RUN git clone https://github.com/laramies/theHarvester.git /app/theHarvester
+
+# Install Metagoofil from source
+# Install Metagoofil from source
+RUN git clone https://github.com/opsdisk/metagoofil.git /app/metagoofil
+
 # Clean up Go module cache and build artifacts to remove test keys (fix false positives)
 RUN rm -rf /go/pkg /go/src /root/.cache
 
@@ -55,8 +66,13 @@ COPY backend/requirements.txt .
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-RUN pip install --upgrade pip "setuptools>=78.1.1" && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip "setuptools>=78.1.1"
+
+# Install tool dependencies into venv
+RUN cd /app/theHarvester && pip install netaddr && pip install .
+RUN cd /app/metagoofil && pip install -r requirements.txt
+
+RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ .
 
 # Setup Frontend and Build
