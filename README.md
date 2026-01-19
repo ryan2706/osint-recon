@@ -37,28 +37,40 @@ Stop running five different terminal windows. Start your recon with **one click*
 
 ---
 
-## 🏁 Quick Start
+## 🏁 Quick Start (Beginner's Guide)
 
-**Prerequisites**: You only need [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed.
+Don't worry if you've never used Docker before. Just follow these steps exactly.
 
-### 1. Clone the Repo
-```bash
-git clone https://github.com/ryan2706/osint-recon.git
-cd osint-recon
-```
+### Step 1: Install Docker
+1.  Download **Docker Desktop** from [docker.com](https://www.docker.com/products/docker-desktop/).
+2.  Install it and open the application.
+3.  **Wait** until you see the green status bar saying "Engine running" in the Docker Desktop window.
 
-### 2. Build & Run
-Run the application with a single command:
-```bash
-docker-compose up --build
-```
-*Wait for a few minutes on the first run while it builds the environment and downloads tool binaries.*
+### Step 2: Get the Code
+1.  Open your computer's **Terminal** (Mac/Linux) or **PowerShell** (Windows).
+2.  Copy and paste this command to download the tool:
+    ```bash
+    git clone https://github.com/ryan2706/osint-recon.git
+    ```
+3.  Go into the folder:
+    ```bash
+    cd osint-recon
+    ```
 
-### 3. Start Hacking
-Open your browser and navigate to:
-**[http://localhost:8000](http://localhost:8000)**
+### Step 3: Run the App
+1.  Copy and paste this command:
+    ```bash
+    docker-compose up --build
+    ```
+2.  **Be Patient**: You will see a lot of text scrolling on the screen. This is normal.
+    *   The first time you run this, it effectively "installs" all the tools inside a virtual container.
+    *   It may take **5-10 minutes** depending on your internet speed.
+3.  When you see a message like `Application startup complete` or `Uvicorn running on http://0.0.0.0:8000`, it is ready.
 
-Enter a target domain (e.g., `example.com`) and hit **START RECON**.
+### Step 4: Open the Dashboard
+1.  Open your web browser (Chrome, Firefox, etc.).
+2.  Type this address in the bar: **[http://localhost:8000](http://localhost:8000)**
+3.  Enter a domain (like `example.com`) and click **START RECON**.
 
 ---
 

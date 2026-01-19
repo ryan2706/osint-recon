@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    container_name: osint-recon
+    ports:
+      - "8000:8000"
+    volumes:
+      # Only mount specific persistent data if needed, but avoid mounting code 
+      # to prevent overwriting the built environment (esp. frontend dist).
+      # If we need live reload for backend dev, we would mount ./backend:/app/backend
+      # But for a "spin up app" user, we want the stable image build.
+      - nuclei-templates:/app/nuclei-templates
+
+volumes:
+  nuclei-templates:

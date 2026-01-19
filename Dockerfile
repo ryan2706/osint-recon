@@ -74,6 +74,11 @@ RUN cd /app/theHarvester && pip install netaddr && pip install .
 RUN cd /app/metagoofil && pip install -r requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Remove build dependencies to reduce attack surface (fixes Trivy findings for gnupg/libxslt)
+RUN apt-get remove -y gnupg libxslt-dev && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
 COPY backend/ .
 
 # Setup Frontend and Build
