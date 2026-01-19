@@ -23,6 +23,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     libxslt-dev \
     libffi-dev \
     libimage-exiftool-perl \
+    && apt-get remove -y --purge linux-image-* linux-headers-* || true \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Go

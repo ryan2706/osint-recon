@@ -4,6 +4,7 @@ scan:
     - /go
   ignored-packages:
     - linux-libc-dev
+    - kernel
     - linux-headers-amd64
     - linux-image-amd64
     - linux-headers-generic
