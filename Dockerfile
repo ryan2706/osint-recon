@@ -75,10 +75,7 @@ RUN cd /app/metagoofil && pip install -r requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Remove build dependencies to reduce attack surface (fixes Trivy findings for gnupg/libxslt)
-RUN apt-get remove -y gnupg libxslt-dev && \
-    apt-get autoremove -y && \
-    rm -rf /var/lib/apt/lists/*
+
 COPY backend/ .
 
 # Setup Frontend and Build
@@ -93,6 +90,12 @@ RUN mkdir -p public
 
 RUN npm install
 RUN npm run build
+
+# Remove build dependencies to reduce attack surface (fixes Trivy findings for gnupg/libxslt/icu/curl)
+# We remove git, wget, curl, nodejs as they are no longer needed
+RUN apt-get remove -y gnupg libxslt-dev git wget curl nodejs libcurl4 && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
 
 # Move frontend build to backend static (or configure backend to serve it)
 # We will assume backend serves static files from ../frontend/dist

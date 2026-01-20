@@ -541,6 +541,11 @@ class Scanner:
         # Merge and deduplicate
         # Convert both lists to a set to remove duplicates, then back to list
         combined_subdomains = list(set(subfinder_results + amass_subdomains + th_subdomains))
+        
+        # Ensure root domain is always included in the probe list
+        if domain not in combined_subdomains:
+            combined_subdomains.append(domain)
+
         logger.info(f"Total unique subdomains found: {len(combined_subdomains)}")
         
         # 3. HTTPX
