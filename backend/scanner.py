@@ -162,8 +162,6 @@ class Scanner:
         
         try:
             cmd = [self.theharvester_path]
-            # ... (omitting path detection logic for brevity if not changing, but wait, I need to keep it)
-            # Actually, I should just replace the whole method to be clean and safe.
             
             # Path Logic: Prefer strict source execution to avoid entrypoint issues
             # We cloned it to /app/theHarvester
@@ -557,7 +555,6 @@ class Scanner:
             "domain": domain,
             "subdomains": combined_subdomains,
             "live_hosts": live_hosts_data,
-            "mx_records": amass_mx_records,
             "mx_records": amass_mx_records,
             "emails": total_emails
         }

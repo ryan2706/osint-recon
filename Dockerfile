@@ -44,10 +44,8 @@ RUN go install -v github.com/owasp-amass/amass/v4/cmd/amass@latest
 RUN git clone https://github.com/projectdiscovery/nuclei-templates.git /app/nuclei-templates
 
 # Install theHarvester from source (pip package is often problematic)
-# Install theHarvester from source (pip package is often problematic)
 RUN git clone https://github.com/laramies/theHarvester.git /app/theHarvester
 
-# Install Metagoofil from source
 # Install Metagoofil from source
 RUN git clone https://github.com/opsdisk/metagoofil.git /app/metagoofil
 
